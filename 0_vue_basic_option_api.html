@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.12.0/dist/axios.min.js"></script>
+    <!-- 国外cdn -->
+    <!-- <script src="https://unpkg.com/vue@3"></script> -->
+    <!-- 国内cdn -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.2.38/vue.global.js"></script>
+    <!-- 仅用于网页增强，不使用构建步骤的特制版 petite-vue: https://github.com/vuejs/petite-vue -->
+    <!-- <script src="https://unpkg.com/petite-vue" defer init></script> -->
+</head>
+
+<body>
+    <h1>example</h1>
+    <div id="example"></div>
+    
+    <h1>app</h1>
+    <section id="app">
+
+        <!-- 当根组件没有设置template或template为falsy值时，Vue将自动使用挂载容器的innerHTML作为template -->
+        <article name="模板语法">
+            <div>Message: {{ textContent }}</div>
+            <div v-html="innerHTML"></div>
+            <input v-bind:id="attributeValue" type="number" />  <!-- 绑定单属性值 -->
+            <input v-bind="attributesObject" />  <!-- 绑定多属性值 -->
+            <div v-once v-bind:id="attributeValue">v-once声明此元素将不再会响应式地改变（包括属性和内容）：{{ textContent }}</div>
+
+            <br>
+            <div v-bind:name="name"></div>
+            <div :name="name"></div>  <!-- 绑定多属性值只能使用'v-bind='，无简写 -->
+            <div :[dynamicAttributeName]="name"></div>  <!-- 属性名使用小驼峰命名法以指出其使用的是JavaScript变量，但浏览器会将属性名全部强制转为小写，因而在JavaScript中应使用其对应的小写形式 -->
+            <div v-on:click="clickFunctionInData()">clickFunctionInData()</div>  <!-- 函数应统一放在methods里成为实例的方法，不过放在data()里也是可以的 -->
+            <div @click="clickFunctionInData">clickFunctionInData</div>
+            <div @[dynamicEventName]="clickFunctionInMethods">clickFunctionInMethods</div>
+
+            <!-- Vue替换的都是JavaScript表达式结果 -->
+            <br>
+            <div :name="'string literal'">{{ textContent + ': JavaScript' }}</div>
+            <div>{{ 'the result is ' + languageVariable + ' ' + `${templateLiteral}` }}</div>
+            <div>{{ (2 > 1) + Math.pow(3, 2) }}</div>
+
+            <!-- 注意：
+                DOM模板解析注意事项：https://cn.vuejs.org/guide/essentials/component-basics.html#dom-template-parsing-caveats
+            -->
+        </article>
+        <hr>
+
+        <article name="响应式基础">
+            <!-- 注意：
+                ①DOM更新时机：https://cn.vuejs.org/guide/essentials/reactivity-fundamentals.html#dom-update-timing
+                ②深层响应性：https://cn.vuejs.org/guide/essentials/reactivity-fundamentals.html#deep-reactivity
+                ③有状态的方法：https://cn.vuejs.org/guide/essentials/reactivity-fundamentals.html#stateful-methods
+            -->
+        </article>
+        <hr>
+
+        <article name="计算属性和侦听器">
+            <div>FirstName: {{ firstName }}</div>
+            <div>LastName: {{ lastName }}</div>
+            <div>ReversedFullName: {{ reversedFullName }}</div>
+            <div>FullName: {{ fullName }}</div>
+            <!-- 注意：
+                计算属性缓存vs方法：https://cn.vuejs.org/guide/essentials/computed.html#computed-caching-vs-methods
+            -->
+
+            <input v-model="watchedFullName" />  <!-- 使用v-model可以将表单输入框的内容同步给实例中相应的变量 -->
+            <!-- debug时有两种方法可观察Vue的响应式：①console。②<input>+v-model。 -->
+            <div>WatchedFullName: {{ watchedFullName }}</div>
+            <!-- 注意：
+                计算属性vs侦听器：1、响应变化时，计算属性应只做计算而没有任何其他的副作用；而侦听器则被用来在响应变化时执行一些“副作用”比如更改DOM，或是根据异步操作的结果去修改另一处的状态。
+                    2、计算属性的结果是其函数的返回值；而侦听器则与其函数返回值无关。
+            -->
+        </article>
+        <hr>
+
+        <article name="Class与Style绑定">
+            <div :class="classString"></div>
+            <div :class="{ class0: true, class1: false, class2: truthy, class3: falsy }"></div>  <!-- class="class0 class2" -->
+            <div :class="[class0, 'class1']"></div>  <!-- class="class0value class1" -->
+            <div :class="[{ class0: truthy }, 'class1']"></div>  <!-- class="class0 class1" -->
+            <!-- 使用一般属性可以，使用计算属性最常用最便捷也最强大 -->
+            <div :class="classObject0"></div>
+            <div :class="[classObject0, classObject1]"></div>
+
+            <div :style="styleString">StyleSample</div>
+            <div :style="{ color: color, fontSize: fontSize + 'px', border: border, display: display }">StyleSample</div>
+            <!-- 使用一般属性可以，使用计算属性最常用最便捷也最强大 -->
+            <div :style="styleObject0">StyleSample</div>
+            <div :style="[styleObject0, styleObject1]">StyleSample</div>
+        </article>
+        <hr>
+
+        <article name="条件渲染">
+            <div v-if="type === 'A'">A</div>
+            <div v-else-if="type === 'B'">B</div>
+            <div v-else-if="type === 'C'">C</div>
+            <div v-else>Not A/B/C</div>
+
+            <template v-if="truthy">
+                <p>Paragraph 0</p>
+                <p>Paragraph 1</p>
+            </template>
+            <template v-else>
+                <p>Paragraph 2</p>
+                <p>Paragraph 3</p>
+            </template>
+
+            <div v-show="truthy">v-show!</div>
+            <!-- v-show只是简单地切换元素的displayCSS属性。不支持<template>元素，也不支持v-else、v-else-if -->
+            <!-- 注意：
+                v-if vs v-show：https://cn.vuejs.org/guide/essentials/conditional.html#v-if-vs-v-show
+            -->
+        </article>
+        <hr>
+        
+        <article name="列表渲染">
+            <ul>
+                <li v-for="item in items" :key="item.message">{{ item.message }}</li>
+                <li v-for="(item, index) in items" :key="index">{{ index }} - {{ item.message }}</li>
+                <!-- <li v-for="item of items" :key="item.message">{{ item.message }}</li> -->
+            </ul>
+            
+            <ol>
+                <li v-for="value in object" :key="value">{{ value }}</li>  <!-- 遍历顺序是Object.keys()的遍历顺序 -->
+                <li v-for="(value, name, index) in object" :key="index">{{ index }} - {{ name }} - {{ value }}</li>
+                <!-- <li v-for="value of object" :key="value">{{ value }}</li> -->
+            </ol>
+            <!-- 注意：
+                通过key管理状态：https://cn.vuejs.org/guide/essentials/list.html#maintaining-state-with-key
+            -->
+
+            <ul>
+                <template v-for="n in 3">  <!-- n从1开始 -->
+                    <p>Paragraph 0</p>
+                    <p>Paragraph 1</p>
+                </template>
+            </ul>
+
+            <ul v-for="numbers in sets">
+                <li v-for="n in even(numbers)" :key="n">{{ n }}</li>
+            </ul>
+        </article>
+        <hr>
+
+        <article name="事件处理">
+            <!-- Vue特有形式，相当于eventParam($event) -->
+            <button @click="eventParam">event as param</button>
+            <!-- 普通JavaScript形式 -->
+            <button @click="argumEventParam('Hello', 'Vue', $event)">argums + event as params</button>  <!-- use '$event' in template/HTML, use 'event' in JavaScript -->
+            <button @click="testWindow(window, event, console, location, Math, String, JSON, Map, Promise, Proxy)">testWindow</button>  <!-- Vue的template中的表达式将被沙盒化，仅能够访问到有限的全局对象列表 -->
+            <!-- undefined, undefined, undefined, undefined, Math, String, JSON, Map, undefined, undefined: no DOM, no BOM, limited JavaScript -->
+            <button @click="one(); two(), three($event)">three handlers</button>
+            <br>
+
+            <section>
+                <!-- .capture .once .passive .prevent .stop .self（仅当evt.target === evt.currentTarget时才触发事件处理）
+                    使用修饰符时，顺序很重要，相应的代码会以同样的顺序产生。用 @click.prevent.self 会阻止元素本身及其子元素的点击的默认行为，而 @click.self.prevent 只会阻止对元素自身的点击的默认行为 -->
+                <a href="https://www.baidu.com/" @click.prevent.stop="outputHref">don't skip to but console.log() the href</a>&nbsp;&nbsp;&nbsp;
+                <a href="https://www.baidu.com/" @click.prevent.stop.self.once>do nothing once, then skip to the href (no handlers)</a>
+            </section>
+            <section>
+                <!-- .enter .tab .delete（捕获“删除”和“退格”键） .esc .space .up .down .left .right .ctrl .alt .shift .meta
+                    你可以直接将KeyboardEvent.key暴露的任意有效按键名转换为kebab-case来作为修饰符，如.page-down -->
+                <input @keyup.alt.enter="outputHref" value="Alt + Enter" />
+            </section>
+            <section>
+                <!-- .ctrl .alt .shift .meta
+                    .exact修饰符允许你精确控制修饰符组合触发 -->
+                <button @click.alt.exact="outputHref">Alt + Click</button>
+                <!-- .left .right .middle -->
+                <button @click.right="outputHref">right click</button>
+            </section>
+        </article>
+        <hr>
+
+        <article name="表单输入绑定">
+            <!-- v-model会忽略所有表单元素的value、checked、selected属性的初始值，它将始终将当前实例的数据作为数据来源 -->
+            <!-- value属性 + input事件 -->
+            <input type="text" name="text" required autocomplete="on" placeholder="textPlaceholder" list="datalist" v-model="inputText" /><p>Text is: {{ inputText }}, Text's type is {{ typeof inputText }}</p>
+            <datalist id="datalist"><option value="textDatalist0"><option value="textDatalist1"><option value="textDatalist2"></datalist>
+            <!-- value属性 + input事件 -->
+            <textarea name="textarea" cols="30" rows="10" v-model="textarea" value="initialInputValue"></textarea><p>Textarea is: {{ textarea }}</p>  <!-- 忽略value初始值，使用实例中textarea的值 -->
+            <!-- value属性 + checked属性 + change事件 -->
+            <input type="radio" name="radio" value="male" v-model="inputRadio" />男
+            <input type="radio" name="radio" value="female" v-model="inputRadio" />女<p>Radio is: {{ inputRadio }}</p>
+            <!-- value属性 + checked属性 + change事件 -->
+            <input type="checkbox" name="checkbox" value="bike" v-model="inputCheckbox" />自行车
+            <input type="checkbox" name="checkbox" value="car" checked v-model="inputCheckbox" />汽车<p>Checkbox is: {{ inputCheckbox }}</p>  <!-- 忽略value和checked初始值，使用实例中inputCheckbox的值做判断 -->
+            <!-- value属性 + change事件 -->
+            <select name="select" v-model="select">
+                <option value="0"></option>
+                <option value="1">one</option>
+                <option value="2" selected>two</option>  <!-- 忽略value和selected初始值，使用实例中select的值做判断 -->
+                <optgroup label="more">
+                    <option value="3">more three</option>
+                    <option value="4">more four</option>
+                </optgroup>
+            </select><p>Select is: {{ select }}</p>
+
+            <select name="vueselect" v-model="vueSelect">
+                <option v-for="option in outGroup(options)" :value="option.value">{{ option.text }}</option>
+                <optgroup label="more">
+                    <option v-for="option in inGroup(options)" :value="option.value">{{ "more" + " " + option.text }}</option>
+                </optgroup>
+            </select><p>VueSelect is: {{ vueSelect }}</p>
+            <!-- .lazy（input事件推迟为change事件） .number .trim -->
+            <input v-model.trim.number="inputText" />
+
+            <!-- 注意：
+                值绑定：https://cn.vuejs.org/guide/essentials/forms.html#value-bindings
+            -->
+        </article>
+        <hr>
+
+        <article name="生命周期">
+            <div><a target="_blank" href="https://cn.vuejs.org/guide/essentials/lifecycle.html#lifecycle-diagram">选项式API生命周期图示</a></div>
+            <div><a target="_blank" href="https://cn.vuejs.org/api/options-lifecycle.html">选项式API生命周期详解</a></div>
+        </article>
+        <hr>
+
+        <article name="模板引用">
+            <!-- ref是Vue特有attribute（还有key和is）。它允许我们在一个特定的DOM元素或子组件实例被挂载后，获得对它的直接引用。
+                以下介绍均为ref引用DOM元素，其和通过id选择器获取DOM元素是一样的。ref更广泛的用途在于引用子组件实例，这将在之后进行讲解 -->
+            <div ref="eltRef">Message: {{ textContent }}</div>
+            <div :ref="refNameVariable"></div>  <!-- 动态指定ref名 -->
+            <div :ref="(elt) => refVariable = elt"></div>  <!-- 使用方法将该ref引用的DOM元素赋值给一个普通属性，从而让我们可以直接使用它，而不必再通过$refs -->
+            
+            <div ref="vforRefs" v-for="n in 3"></div>  <!-- 唯一需要注意的例外，其引用的是一个DOM元素数组 -->
+        </article>
+
+    </section>
+</body>
+    
+<script>
+'use strict';
+
+const { createApp } = Vue;
+
+// 创建应用实例，并将其挂载到元素上
+createApp({  // createApp()以根组件为唯一参数
+    template: `before &lt;p&gt;<p>{{ text0 }}</p>after &lt;p&gt;`,  /* JS: 模板将作为DocumentFragment插入DOM中被渲染 */
+    data() {
+        return { text0: "in <p>" }
+    }
+}).mount("#example");
+
+// 可以创建多个应用实例，以将它们分别挂载到所需的元素上去
+const app = createApp({
+    
+    template: ``,  // 当根组件没有设置template或template为falsy值时，Vue将自动使用挂载容器的innerHTML作为template；当template为truthy值时，Vue则使用该template值
+
+    // data是函数并返回对象，既实现了对该对象用响应式系统进行包装，又保证了每个组件实例都有自己独立的一套变量
+    data() {  // 使用选项式API时，组件的响应式状态只能通过data选项实现。虽然也可直接向组件实例添加新属性，但这个属性将无法触发响应式更新
+        return {
+            // 模板语法
+            textContent: "msg",
+            innerHTML: "<br>",
+            attributeValue: "bindId",
+            attributesObject: {
+                id: "bindId",
+                name: "bindName",
+                type: "number",
+                min: 1,  // 支持数值类型的HTML属性
+                required: true,  // 支持布尔类型的HTML属性
+                disabled: null  // 绑定null、undefined以显式地移除此HTML属性
+            },
+
+            name: "bindName",
+            dynamicattributename: "data-name",  // 使用对应小写形式
+            clickFunctionInData() { console.log("clickFunctionInData..."); },
+            dynamiceventname: "click",  // 使用对应小写形式
+
+            languageVariable: "javascript",
+            templateLiteral: "expression",
+
+            // 计算属性和侦听器
+            firstName: "Xuanqi",
+            lastName: "Wu",
+            watchedFullName: "",
+
+            // Class与Style绑定
+            classString: "class0 class1",
+            truthy: "xxxxxxxxxx",
+            falsy: null,
+            class0: "class0value",
+
+            styleString: "color: red; font-size: 50px; border: 1px solid blue; display: -webkit-box; display: -ms-flexbox; display: flex;",
+            color: "red",
+            fontSize: "50",
+            border: "1px solid blue",
+            display: ['-webkit-box', '-ms-flexbox', 'flex'],  // Vue将自动侦测需要vendor prefix（浏览器引擎前缀）的CSS属性并为其添加相应的被支持的前缀
+
+            // 条件渲染
+            type: "D",
+
+            // 列表渲染
+            items: [{ message: 'Foo' }, { message: 'Bar' }],
+            object: { name0: "value0", name1: "value1", name2: "value2" },
+            sets: [[ 1, 2, 3, 4, 5 ], [6, 7, 8, 9, 10]],
+
+            // 表单输入绑定
+            inputText: "",
+            textarea: "",
+            inputRadio: "female",
+            inputCheckbox: ["bike"],
+            select: "3",
+            vueSelect: "",
+            options: [
+                { text: 'one', value: '1' },
+                { text: 'two', value: '2' },
+                { text: 'three', value: '3' },
+                { text: 'four', value: '4' },
+            ],
+
+            // 模板引用
+            refNameVariable: "dynamicRefName",
+            refVariable: null
+        }
+    },
+
+    computed: {
+        reversedFullName() {
+            return this.lastName + ' ' + this.firstName;
+        },
+        // 计算属性默认只有getter，不过在需要时你也可以提供一个setter
+        fullName: {
+            get() {  // getter
+                return this.firstName + ' ' + this.lastName;
+            },
+            set(newName) {  // setter
+                const names = newName.split(' ');
+                this.firstName = names[0];
+                this.lastName = names[names.length - 1];
+            }
+        },
+
+        classObject0() {
+            return {
+                class0: true,
+                class1: false,
+                class2: this.truthy,
+                class3: this.falsy,
+            }
+        },
+        classObject1() {
+            return {
+                class0: true,  // 同名，简单拼接，不去重
+                class4: false || "xxxxxxxxxx",
+            }
+        },
+        styleObject0() {
+            return {
+                color: this.color,
+                fontSize: this.fontSize + 'px',
+                border: this.border,
+                display: this.display,
+            }
+        },
+        styleObject1() {
+            return {
+                color: 'green',  // 同名，后者覆盖前者
+            }
+        }
+    },
+
+    watch: {
+        // 每当watchedFullName发生变化时，该函数都将执行
+        watchedFullName(newValue, oldValue) {
+            this.getWatchedFullName();
+        },
+        watchedFullName: {
+            handler(newValue, oldValue) {
+                this.getWatchedFullName();
+            },
+            deep: false,  // 默认false，浅层监听
+            immediate: true,  // 默认false，true声明该监听函数立即执行一次
+            flush: 'post'  // 默认'pre'，指先执行侦听器回调，再更新Vue组件。'post'声明先更新Vue组件，后执行侦听器回调
+        }
+    },
+    created() {
+        // 可以动态地创建或停止一个侦听器
+        const unwatch = this.$watch('reversedFullName', (newValue, oldValue) => {});  // 创建
+        unwatch();  // 停止
+    },
+
+    methods: {
+        // Vue中不推荐使用箭头函数，因为在触发调用函数时，Vue在底层会绑定this，箭头函数的使用会使这种绑定失效
+        clickFunctionInMethods() { console.log("clickFunctionInMethods..."); },
+        // Vue中唯一常见的箭头函数用法，是在函数（实例方法）中使用箭头函数，此种this可正确绑定至当前实例
+        arrowFunction() { return () => this.textContent; },
+
+        // Vue中任意地方，都可使用this.xxx()来调用这些函数（实例方法）
+        getWatchedFullName() {
+            axios.get('https://yesno.wtf/api')
+                .then(response => {
+                    this.watchedFullName = response.data.answer;
+                })
+                .catch(error => {
+                    this.watchedFullName = 'Error! Could not reach the API. ' + error;
+                })
+        },
+
+        even(numbers) {
+            return numbers.filter(number => number % 2 === 0);
+        },
+
+        eventParam(e) {
+            console.log(e);
+        },
+        argumEventParam(...args) {
+            console.log(args[0] + ' ' + args[1]);
+            console.log(args[2]);
+            console.log(args[2] === event);  // use '$event' in template/HTML, use 'event' in JavaScript
+        },
+        testWindow(...args) {
+            for (let arg of args) {
+                console.log(arg);
+            }
+        },
+        one() {
+            console.log("one");
+        },
+        two() {
+            console.log("two");
+        },
+        three(e) {
+            console.log("three");
+            console.log(e);
+        },
+        outputHref(e) {
+            console.log(e.target.href);
+        },
+
+        outGroup(options) {
+            return options.filter(option => option.value <= 2);
+        },
+        inGroup(options) {
+            return options.filter(option => option.value > 2);
+        }
+    },
+
+    mounted() {  // 模板引用都会被暴露在$refs属性上。切记$refs只在挂载后才生效，才能被使用（在mounted()中生效，在created()中无效）
+        console.log("...instance mounted...");
+        console.log(this.$refs.eltRef);
+        console.log(this.$refs.eltRef.textContent);
+        console.log(this.$refs.dynamicRefName);  // refNameVariable: "dynamicRefName"
+        console.log(this.refVariable);
+        console.log(this.$refs.vforRefs);
+    }
+
+});
+
+const vm = app.mount("#app");
+
+// 在console中访问实例
+vm.$refs.eltRef.addEventListener('click', () => {
+
+    // data  /* JS: object的数据属性 */
+    console.log(vm.textContent);
+    vm.textContent = "after vm.textContent";
+
+    // computed  /* JS: object的访问器属性 */
+    console.log(vm.fullName);
+    vm.fullName = "Xuanqi xxx Wu";
+
+    // methods  /* JS: object的方法 */
+    console.log(vm.clickFunctionInMethods);
+    vm.clickFunctionInMethods();
+
+    // Vue通过$向外暴露实例的一些有用的内置API
+    vm.$data;  // 在外部访问data（意义不大，因为可直接vm.访问）
+    vm.$watch();  // 在外部添加侦听器
+    vm.$refs;  // 在外部访问模板引用
+
+});
+
+</script>
+
+</html>

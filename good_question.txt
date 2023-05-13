@@ -1,0 +1,26 @@
+Vue：
+------
+Vue的出现是为了解决什么问题（框架优点）：
+...
+1、双向数据绑定 2、组件化开发 3、虚拟DOM
+https://blog.csdn.net/m0_45067620/article/details/118677904
+...
+
+什么是虚拟DOM：
+...
+
+Vue3的diff算法：
+...
+
+Vue2与Vue3的区别：
+https://juejin.cn/post/6940454764421316644
+...
+
+nextTick()：
+https://cn.vuejs.org/api/general.html#nexttick
+...
+
+Vue与React的区别：
+...
+
+

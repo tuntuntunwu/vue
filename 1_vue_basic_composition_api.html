@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.2.38/vue.global.js"></script>
+</head>
+
+<body>
+    <section id="app"></section>
+</body>
+    
+<script>
+'use strict';
+
+const { createApp, reactive, ref, computed, watch, onMounted } = Vue;
+
+const app = createApp({
+
+    // setup()是专门用于组合式API的特殊钩子函数，其会在所有选项式API生命周期钩子之前调用（包括beforeCreate()）
+    // 具体运行顺序是 setup() --> 创建实例（绑定this） --> beforeCreate() --> data()、computed、watch、methods --> created() --> template --> mounted()、...
+    //           [组合式API]                    [                                               选项式API                                               ]
+    //           [                                                  服务端渲染时运行                                                  ][ 服务端渲染时不运行 ]
+    // 以下内容按照上述运行顺序排列
+
+    // 相对于选项式API，组合式API更底层、更灵活、更精确
+    // https://cn.vuejs.org/guide/extras/composition-api-faq.html#why-composition-api
+    setup() {
+        console.log('...setup()...');
+        
+        // data
+        const reactiveObject = reactive({ count: 0 });  // 使用reactive()获取响应式对象类型
+        console.log(reactiveObject.constructor);
+        const a = { count: 0 };
+        console.log(reactive(a) === reactive(a));  // 为保证访问响应式对象的一致性，对同一个原始对象调用reactive()总会返回同一个响应式对象
+        console.log(reactiveObject === reactive(reactiveObject));  // 对一个已存在的响应式对象调用reactive()会返回其本身
+        
+        const reactivePrimitive = ref("reactivePrimitive");  // 使用ref()获取响应式原始类型
+        console.log("reactivePrimitive" === reactivePrimitive.value);  // ref()的本质是将原始类型值包装为 仅有一个属性'value'，值为此原始值 的响应式对象
+        console.log(reactivePrimitive.constructor);
+        console.log(reactivePrimitive === ref(reactivePrimitive));
+
+        console.log(reactiveObject !== ref(reactiveObject));
+        console.log(reactiveObject === ref(reactiveObject).value);
+
+        reactivePrimitive.value += "!!!";  // 在组合式API中（setup()或<script setup>）使用的ref对象必须显式地使用.value访问
+        // 而在其他部分（选项式API）中使用ref对象，都会自动“解包”，不需要使用.value访问
+        // 请记住，上述仅为总体原则，对于ref对象的自动解包，有纷繁复杂的边界情况需要考虑。当遇到这样的情况时，一个明智的做法是，根据实际功能是否能被实现 来具体地决定是否使用.value
+
+        // Vue还提供了许多实用的相关工具函数isRef()、isReactive()、unref()等
+
+        const compositionData = ref("compositionData");
+        // 再次强调注意：①DOM更新时机。②深层响应性。
+
+        // computed
+        const computedData = ref("computedData");
+        const compositionComputed = computed(() => {  // 返回值为一个ref。在setup()中通过.value使用，在template中直接用（自动解包）
+            return [...computedData.value];
+        });
+        const nullComputed = computed({
+            get() {  // getter
+                return computedData.value;
+            },
+            set(newValue) {  // setter
+                computedData.value = newValue;
+            }
+        });
+
+        // watch
+        const watchedData = ref("watchedData");
+        const compositionWatch = ref(null);
+        watch(watchedData, (newValue, oldValue) => {  // handler
+            compositionWatch.value = [...newValue];
+        }, {  // options
+            immediate: true  // = watchEffect()。watchEffect()不仅会立即执行一遍回调，还会自动分析出响应源（根据同步代码），因而其可忽略第一个参数。
+            // deep: true  // 不同于选项式API，在组合式API中直接使用watch()，默认为深层侦听
+            // flush: 'pre'
+        });
+        // 一个关键点是，侦听器必须用同步语句创建，这样其才能被绑定到当前实例上并在实例销毁时一起被垃圾回收。如果必须用异步回调创建一个侦听器，那么你必须注意2点：
+        // 1、必须明确侦听目标，即是哪个实例的哪些属性。2、必须手动停止它，以防内存泄漏。停止的方法是调用watch()返回的函数：const unwatch = watch(); unwatch();
+
+        // methods
+        function compositionMethods() {
+            reactiveObject.count++;
+        }
+
+        // 生命周期
+        // 在组合式API中也能使用生命周期钩子函数，这些函数与选项式API的生命周期钩子函数一一对应（但没有beforeCreate()和created()），并在相同的阶段被调用
+        onMounted(() => {
+            console.log("...onMounted()...");  // 先于选项式API的mounted()调用
+            console.log(reactivePrimitive);  // 直接访问，不存在this.访问
+            console.log(eltRef.value);
+        });
+
+        // 模板引用
+        // 不同于选项式API中通过this.$refs访问模板引用，要在组合式API的生命周期钩子函数中使用模板引用，我们需要声明一个同名的ref（作为普通属性访问）
+        const eltRef = ref(null);
+        
+        // 将内容传递给实例
+        return {
+
+            // data
+            compositionData,
+
+            // computed
+            computedData,
+            compositionComputed,
+
+            // watch
+            watchedData,
+            compositionWatch,
+
+            // methods
+            reactiveObject,
+            compositionMethods,
+
+            // 模板引用
+            eltRef
+
+        }
+
+        // 深入响应式系统
+        // https://cn.vuejs.org/guide/extras/reactivity-in-depth.html
+    },
+
+    // 组件实例初始化 后调用。从此之后，可以使用 this 和 组合式API中传递出的内容
+    beforeCreate() {
+        console.log('...beforeCreate()...');
+        console.log(this.compositionData);
+    },
+    
+    data() {
+        console.log('...data()...');
+        return { optionData: "optionData" };
+    },
+    computed: {},
+    watch: {},
+    methods: {},
+
+    // 组件实例中与响应式相关的内容创建完成 后调用。从此之后，可以使用 组合式API+选项式API中的响应式数据（data）、计算属性（computed）、侦听器（watch）和方法（methods）
+    created() {
+        console.log("...created()...");
+        console.log(this.optionData);
+    },
+
+    template: `
+        <article name="组合式API" ref="eltRef">
+            <div>组合式API中的data：<input type="text" v-model="compositionData" /></div>
+            <div>compositionData: {{ compositionData }}</div>
+            <div>this.compositionData: {{ this.compositionData }}</div>
+            <div>选项式API中的data：<input type="text" v-model="optionData" /></div>
+            <div>optionData: {{ optionData }}</div>
+            <div>this.optionData: {{ this.optionData }}</div>
+
+            <div>组合式API中的computed：<input type="text" v-model="computedData" /></div>
+            <div>compositionComputed: {{ compositionComputed }}</div>
+            <div>组合式API中的watch：<input type="text" v-model="watchedData" /></div>
+            <div>compositionWatch: {{ compositionWatch }}</div>
+            <div>组合式API中的methods：<input type="button" value="++" @click="compositionMethods" />{{ reactiveObject.count }}</div>
+        </article>
+    `,
+
+    // 组件实例挂载DOM完成 后调用。从此之后，可以使用 涉及DOM操作的内容，比如模板引用（$refs）
+    mounted() {
+        console.log("...mounted()...");
+        console.log(this.$refs.eltRef);
+    }
+
+});
+
+const vm = app.mount("#app");
+
+</script>
+
+</html>

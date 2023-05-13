@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.2.38/vue.global.js"></script>
+</head>
+
+<body>
+    <section id="app">
+
+        <!-- 根组件无template，挂载容器的innerHTML将被作为根组件的template -->
+        <article name="组件定义 + 注册">
+            <global-component-div>
+                <br>
+                These two components is of the root component, but embedded in 'global-component-div's slot:
+                <root-local-component-button></root-local-component-button>
+                <local-component-a></local-component-a>
+            </global-component-div>
+            <!-- A组件template里使用了B组件（无论以何种方式注册），则称A为父组件，B为子组件。注意，template中直接使用才算，<slot>中嵌入的不算 -->
+            <!-- 上例中，<xxx id="app">是<global-component-div>、<root-local-component-button>、<local-component-a>的父组件。
+                <global-component-div>是<local-component-button>、<local-component-a>、<global-component-button>的父组件。
+                <global-component-div>的<slot>中的<root-local-component-button>、<local-component-a>不是其自己的子组件，而是<xxx id="app">的子组件 -->
+        </article>
+        <hr>
+
+        <article name="Props + 透传Attributes">
+            <parent-component id="idFromRoot"></parent-component>
+        </article>
+        <hr>
+
+        <article name="自定义事件">
+            <parent-component-a></parent-component-a>
+        </article>
+        <hr>
+
+        <article name="插槽">
+            <parent-component-b></parent-component-b>
+        </article>
+        <hr>
+
+        <article name="Provide / Inject">
+            This is in root component, here to change root's provided data: <input type="text" v-model="rootProvidedData" />
+            <parent-component-c></parent-component-c>
+            <!-- A组件template里使用了B组件（无论以何种方式注册），则称A为父组件，B为子组件。注意，template中直接使用才算，<slot>中嵌入的不算 -->
+            <!-- 上例中，<xxx id="app"> -子-> <parent-component-c> -子-> <child-component-c> -->
+        </article>
+        <hr>
+                
+        <article name="异步组件">
+            <async-component></async-component>
+        </article>
+        <hr>
+
+        <article name="动态组件 + 组件模板引用">
+            <dynamic-component></dynamic-component>
+        </article>
+
+    </section>
+
+</body>
+    
+<script>
+'use strict';
+
+const { createApp, computed, defineAsyncComponent } = Vue;
+
+// 组件定义 + 注册
+
+// 组件定义
+const LocalComponentButton = {
+    template: `<button>This is a 'local-component-button' component</button>`
+};
+const LocalComponentA = {
+    template: `<a href="https://www.baidu.com/" @click.prevent>This is a 'local-component-a' component</a>`
+};
+
+const GlobalComponentButton = {
+    template: `<button>This is a 'global-component-button' component</button>`
+};
+const GlobalComponentDiv = {
+    components: {
+        // 组件的局部注册。注册在此的 局部组件 能在此组件template上使用
+        'local-component-button': LocalComponentButton,  // 将组件（JavaScript对象）LocalComponentButton局部注册为名<local-component-button>的组件
+        'local-component-a': LocalComponentA,
+    },
+    // 此template可使用 组件内的局部组件 和 全局组件
+    template: `
+        <div style="border: 1px solid red">This is a 'global-component-div' component, includes three components:
+            <local-component-button></local-component-button>
+            <local-component-a></local-component-a>
+            <global-component-button></global-component-button>
+            <slot></slot>
+        </div>
+    `
+};
+
+const RootComponent = {
+    components: {
+        'root-local-component-button': LocalComponentButton,  // 可任意指定组件名字，不过最好在整个应用内保持一致
+        'local-component-a': LocalComponentA,  // 保持一致
+    },
+
+    // Provide / Inject
+    data() {
+        return {
+            rootProvidedData: 'ROOT STRING'
+        }
+    },
+    provide() {
+        return {
+            rootProvidedData: computed(() => this.rootProvidedData)
+        };
+    },
+};
+
+// 根组件注册（唯一）
+const app = createApp(RootComponent);
+
+// 组件的全局注册。全局组件 能在任意组件template上使用
+app.component('global-component-button', GlobalComponentButton)  // 将组件（JavaScript对象）GlobalComponentButton全局注册为名<global-component-button>的组件
+    .component('global-component-div', GlobalComponentDiv);
+
+// 关于组件的一个关键性问题是 何为父子组件？
+// A组件template里使用了B组件（无论以何种方式注册），则称A为父组件，B为子组件。注意，template中直接使用才算，<slot>中嵌入的不算
+
+// 注意：
+// 全局注册vs局部注册：https://cn.vuejs.org/guide/components/registration.html#local-registration
+
+
+
+// Props + 透传Attributes
+
+const ChildComponent = {
+    // Props是自定义组件的自定义Attributes，被设计用来接收父组件传入的信息
+
+    props: ['title', 'isPublished'],  // 声明
+    /* Prop校验。若传入的内容不满足要求，则报[Vue warn]且不进行赋值。
+    https://cn.vuejs.org/guide/components/props.html#prop-validation
+    https://cn.vuejs.org/guide/components/props.html#runtime-type-checks
+    props: {
+        title: {
+            type: [String, Number],  // 任意构造函数
+            required: true,
+            default: "default title string"
+        },
+        isPublished: {
+            validator(value) {
+                return ['value0', 'value1', 'value2'].includes(value);
+            }
+        }
+    },
+    */
+
+    computed: {
+        type() {
+            return "'" + typeof this.title + "'";  // 使用：Props的值就是父组件传入的信息，而其本身就像普通组件属性一样，可以在组件中任何地方使用
+        },
+    },
+    
+    // 除了Props，自定义组件还将接收父组件传入（绑定）的其他HTMLAttributes
+    // 不同于Props，这些接收到的HTMLAttributes将直接挂载在template中的根元素上。若无根元素，则需手动指定挂载位置（在指定元素上使用v-bind="$attrs"）
+    // 如果根元素非普通DOM元素，而是自定义组件，则这些Attributes将继续被传入这些子组件中，这一过程被称为透传Attributes
+
+    // 此template可任意使用Props。除Props外，其余接收到的均属于HTMLAttributes，这些Attributes则会被挂载到根元素<div>上
+    template: `<div>This 'child-component's title is {{ title }}, the input title's type is {{ type }}</div>`,
+
+    created() {
+        if (this.$attrs.id) {
+            console.log('......');
+            // 使用：通过$props可访问Props
+            for (let [n, v] of Object.entries(this.$props)) {
+                console.log("this.$props", "name:", n, "value:", v);
+            }
+            // 使用：通过$attrs可访问透传来的HTMLAttributes
+            for (let [n, v] of Object.entries(this.$attrs)) {
+                console.log("this.$attrs", "name:", n, "value:", v);
+            }
+        }
+    },
+    // inheritAttrs: false  // 禁止自动地继承Attributes，可使用$attrs手动使用透传来的Attributes
+};
+
+const ParentComponent = {
+    data() {
+        return {
+            parentPost: {
+                title: "'parent title string'",  // 子组件声明的Prop
+                id: "parentPost",  // 被原生支持的HTMLAttribute
+                title1: "'parent title1 string'",  // 非Props且不被原生支持的HTMLAttribute（没啥用也没必要）
+            }
+        }
+    },
+    methods: {
+        parentMethod() {  // @click一样被透传。这意味着子组件可以触发调用父组件的方法
+            console.log(this);
+            alert("hehe");
+        }
+    },
+
+    template: `
+        <div style="border: 1px solid red">This is 'parent-component':
+            <!-- Props接收静态值，只能是字符串 -->
+            <child-component title="'static title string'"></child-component>
+            <!-- Props接收动态绑定值，可以是任意类型值 -->
+            <child-component :title="{ name: 'value', }" is-published></child-component>  <!-- 仅写上prop但不传值，会隐式转换为'true'  -->
+            <child-component :title="parentPost.title"></child-component>  <!-- 接收父组件传值 -->
+
+            <!-- 除了Props，其余的都按HTMLAttributes接收 -->
+            <child-component :id="parentPost.id"></child-component>
+            <child-component v-bind="parentPost" :is-published="false"></child-component>
+
+            <!-- 可以各种混用。注意：①同名时后者会覆盖前者。②如无显示使用$attrs，则自动挂载的Attributes算最后③@监听器不会覆盖，都保留触发 -->
+            <child-component id="hhh" :title="true" @click="parentMethod" v-bind="$attrs"></child-component>
+        </div>
+    `
+};
+
+app.component('child-component', ChildComponent).component('parent-component', ParentComponent);
+
+
+
+// 自定义事件
+
+// ①基本：单向传值（子向父）
+const ChildComponentA1 = {
+    // 自定义组件的自定义事件，被设计用来向父组件传递信息，emits声明了这些自定义事件名
+
+    // 必须要知道的一个点是 自定义事件仅是一种Vue官方封装的子向父通讯的手段，并非是真正的事件传播。因而
+    // ①不支持DOM原生事件。②不支持在DOM元素上监听自定义事件（仅能在父组件template中的子组件<tag>上监听）。③可在任何合理的地方调用$emit()函数以实现传值
+
+    emits: ['customEvent'],  // 声明
+    /* 事件校验。使用一个函数为事件校验，该函数接收$emit()的参数2为唯一参数，返回布尔值来表明事件是否合法。若非法，则报[Vue warn]且不被抛出。
+    emits: {
+        customEvent: ({ email, password }) => {
+            if (email && password) {
+                return true;
+            } else {
+                console.warn('Invalid submit event payload!');
+                return false;
+            }
+        }
+    },
+    */
+
+    // 自定义属性（props）和自定义事件（emits） 都在子组件中声明，props传值和事件监听 都在父组件template中的子组件<tag>上实现
+    props: ['title'],
+
+    data() {
+        return {
+            selfTitle: this.title  // 不应该更改父组件传给子组件的props内容，以防子组件因意外修改父组件的状态而产生难以理解的数据流
+        }
+    },
+
+    // 使用：通过$emit()函数向父组件发出自定义事件
+    template: `
+        <div>This 'child-component-a1's title is:
+            <h5>{{ selfTitle }}</h5>
+            here to change its own title: <input type="text" v-model="selfTitle" />,
+            here to change 'parent-component-a's title: <input type="text" @input="$emit('customEvent', $event.target.value, 1, 2)" />
+            <!-- $emit()参数1是自定义事件名，参数2是唯一在处理程序中可通过$event被访问到的传递值，其余参数仅在使用Vue特有形式处理方式时才能被访问到 -->
+        </div>
+    `
+};
+
+// ②双向绑定传值
+const ChildComponentA2 = {
+    props: ['interVar'],
+    emits: ['update:interVar'],
+    template: `
+        <div>This 'child-component-a2's title binds 'parent-component-a's title:
+            <h5>{{ interVar }}</h5>
+            here to change 'parent-component-a's title: <input type="text" :value="interVar" @input="$emit('update:interVar', $event.target.value)" />
+        </div>
+    `
+    
+};
+
+const ParentComponentA = {
+    data() {
+        return {
+            parentTitle: "'parent title string'"
+        }
+    },
+    methods: {
+        changeTitle(evtvalue, ...args) {
+            this.parentTitle = evtvalue;
+            console.log(args);
+        },
+    },
+
+    template: `
+        <div style="border: 1px solid red">This is 'parent-component-a', and its title is:
+            <h1>{{ parentTitle }}</h1>
+            
+            <!-- props传值和事件监听 在父组件template中的子组件<tag>上实现 -->
+            <child-component-a1 :title="'child title string'" @custom-event="changeTitle"></child-component-a1>
+            <!-- 注意：
+                ①不同于原生事件监听器，Vue将避免自定义事件监听器被传透给子组件的元素。
+                ②修饰符仅支持.once。
+                ③处理时可使用$event代表由子组件（事件）传来的值 @custom-event="changeTitle('other argument', $event)"。
+                ④如果原生DOM事件被声明在emits选项中，则此事件将成为自定义事件。监听器只会监听响应$emit()发出的事件而不会再监听响应原生的DOM事件。
+            -->
+
+            <child-component-a2 v-model:inter-var="parentTitle"></child-component-a2>
+            <!-- 注意：
+                ①仅在子组件中存在<input>且其按照规则书写时，父组件才能使用v-model与子组件中的<input>实现双向绑定传值。
+                ②一个组件上可创建多个v-model双向绑定。
+                ③可自定义v-model修饰符：https://cn.vuejs.org/guide/components/events.html#usage-with-v-model
+            -->
+        </div>
+    `
+};
+
+app.component('child-component-a1', ChildComponentA1).component('child-component-a2', ChildComponentA2).component('parent-component-a', ParentComponentA);
+
+
+
+// 插槽
+
+const ChildComponentB = {
+    // 通过使用插槽，组件变得更加灵活和具有可复用性。其可以在不同的地方渲染各异的内容，但同时还保证都具有相同的样式
+
+    data() {
+        return {
+            childData: {
+                slotTitle: "childDataTitle",
+                slotContent: "childDataContent"
+            }
+        }
+    },
+    template: `
+        <div>
+            <div>This is 'child-component-b's default slot: <slot></slot></div>  <!-- 无名（默认）插槽将获得隐式名称default -->
+            <div>This is 'child-component-b's slot with default content: <slot>Default content</slot></div>  <!-- 多个同名插槽将获得一样的内容 -->
+            <div>This is 'child-component-b's named slot: <slot name="named"></slot></div>
+
+            <div>Normal: The parent component gives a slot the content: <slot name="parent"></slot></div>
+            <div>Scoped Slot: This child component 'child-component-b' can also give a slot the content through slot props:
+                <slot name="child" :slot-title="childData.slotTitle" :slot-content="childData.slotContent"></slot>
+            </div>
+            <div>Slot props' data transfer of Scoped Slots is in essence the procedure in which function arguments are assigned to function parameters:
+                <slot name="dataTransfer" v-bind="childData"></slot>
+            </div>
+        </div>
+    `
+};
+
+const ParentComponentB = {
+    data() {
+        return {
+            parentData: {
+                slotTitle: "parentDataTitle",
+                slotContent: "parentDataContent"
+            }
+        }
+    },
+    template: `
+        <div style="border: 1px solid red">This is 'parent-component-b':
+            <child-component-b>
+                <div style="color: red">Default slot</div>  <!-- <template v-slot:default><div style="color: red">Default slot</div></template> -->
+                <template v-slot:named>
+                    <div style="color: orange">Named slot</div>
+                </template>
+
+                <template v-slot:xxx>xxx</template>
+                <template #xxx>xxx</template>
+                <template #[dynamicxxx]>xxx</template>
+
+                <template #parent>
+                    <div style="color: yellow">This content data comes from the parent component: {{ parentData }}</div>
+                </template>
+                <template #child="childData">  <!-- 所有子组件传入的slot props都被存入临时对象childData，此对象仅在此插槽内部有效 -->
+                    <div style="color: green">
+                        This content data comes from the child component: {{ childData }},
+                        And this content data comes from the parent component: {{ parentData }}
+                    </div>
+                </template>
+                <!-- 对于无名（默认）插槽，接收子组件slot props的方式是这样的：①<div v-slot="slotProps"></div>
+                    ②<template #default="slotProps"><div><br><br></div></template> -->
+
+                <template #dataTransfer="{ slotTitle, slotContent: identifier, extra = 'placeholder' }">
+                    <!-- 子组件向父组件中插槽传递slot props的过程，在底层JS中实现为子组件返回的实参数据被父组件插槽函数的形参收纳使用 -->
+                    <div style="color: blue">The final data looks like this: {{ { slotTitle, identifier, extra } }}</div>
+                </template>
+            </child-component-b>
+        </div>
+    `
+    // 由于插槽既可以接收父组件传值，也可以接受子组件传值，我们可以将其作为一种小型简易组件使用（无需额外编写组件，无需繁琐地接收交互组件的数据）
+    // 一个典型的例子是无渲染组件。一些组件可能只包括了逻辑而不需要自己渲染内容，其逻辑输出为外界其他组件提供功能，这样的组件被称为无渲染组件。无渲染组件即可使用插槽实现
+};
+
+app.component('child-component-b', ChildComponentB).component('parent-component-b', ParentComponentB);
+
+
+
+// Provide / Inject
+
+const ChildComponentC = {
+    // provide/inject提供了任意父组件向任意子组件传值的便捷机制。反过来不行，子组件不能用该机制传值给父组件
+
+    inject: ['rootProvidedData', 'parentProvidedData'],
+    // inject选项：https://cn.vuejs.org/guide/components/provide-inject.html#injection-aliasing
+    //     https://cn.vuejs.org/guide/components/provide-inject.html#injection-default-values
+
+    template: `
+        <div>This 'child-component-c' get injected data from root component: {{ rootProvidedData }}</div>
+        <div>This 'child-component-c' get injected data from 'parent-component-c': {{ parentProvidedData }}</div>
+    `
+};
+
+const ParentComponentC = {
+    data() {
+        return {
+            parentProvidedData: 'PARENT STRING'
+        }
+    },
+    // provide像data一样向外提供变量，既保证了可以访问到组件实例this，又确保了提供出去的是一套独立的变量
+    provide() {
+        return {
+            // 但provide并不会和data一样实现对变量的响应式包装，我们必须手动地使用computed()提供响应性
+            parentProvidedData: computed(() => this.parentProvidedData)
+        };
+    },
+    template: `
+        <div style="border: 1px solid red">
+            This is 'parent-component-c', here to change parent's provided data: <input type="text" v-model="parentProvidedData" />
+            <child-component-c></child-component-c>
+        </div>
+    `
+};
+
+app.provide("appProvidedData", "APP STRING");  // 可以在应用层为整个应用提供使用变量
+app.config.unwrapInjectedRef = true;  // 保证inject正常使用（Vue3.3后不再需要）
+app.component('child-component-c', ChildComponentC).component('parent-component-c', ParentComponentC);
+
+
+
+// 异步组件
+
+const AsyncComp = defineAsyncComponent(() => new Promise(  // 接收一个返回Promise的加载函数
+    (resolve, reject) => {  // 以一个组件定义为resolve
+        resolve({
+            data() { return { selfData: "content" }; },
+            template: `<div>I am an async component, and my data is {{ selfData }}</div>`
+        });
+    })
+);
+
+/*
+const AsyncCompB = defineAsyncComponent({
+    loader: () => import('./xxx.vue'),  // 加载函数
+
+    loadingComponent: LoadingComponent,  // 加载等待时显示的组件
+    delay: 200,  // ms，显示加载等待组件前的延迟，以防闪烁
+
+    errorComponent: ErrorComponent,  // 加载失败后显示的组件
+    timeout: 3000  // ms，超时也会显示加载失败组件
+});
+*/
+
+app.component('async-component', AsyncComp);
+
+
+
+// 动态组件 + 组件模板引用
+
+const TabComponent1 = {
+    props: ['title'],
+    expose: ["selfTitle"],  // expose选项可限制通过模板引用访问到的内容
+    data() { return { selfTitle: this.title }; },  // 之后此组件的title将被修改，因而不能直接使用props的title，应存为本地数据属性selfTitle
+    template: `<div>This is page1, and its title is {{ selfTitle }}, <slot></slot></div>`
+
+};
+const TabComponent2 = {
+    props: ['title'],
+    expose: ["selfTitle"],
+    data() { return { selfTitle: this.title }; },
+    template: `<div>This is page2, and its title is {{ selfTitle }}</div>`
+};
+
+const DynamicComponent = {
+    data() {
+        return {
+            currentComponent: 'tab-component1',
+            unifiedTitle: "unifiedTitle"
+        };
+    },
+    methods: {
+        changeComponent() {
+            if (this.currentComponent === 'tab-component1') {
+                // 传给:is的值可以是已注册的组件名，也可以是定义的组件对象
+                this.currentComponent = TabComponent2;  // 组件对象，不推荐
+            }
+            else {
+                this.currentComponent = 'tab-component1';  // 已注册组件名，推荐
+            }
+        },
+        changeTitle() {
+            // 通过对组件添加模板引用，可直接通过$refs访问到组件实例内部
+            this.$refs.compRef.selfTitle = "changedTitle";
+        }
+    },
+
+    template: `
+        <div style="border: 1px solid red">This is 'dynamic-component':
+            <div>     
+                <button @click="changeComponent">change current component</button>
+                <button @click="changeTitle">change current component's title!</button>
+
+                <!-- 使用<component :is="currentComponent"></component>来实现动态组件 -->
+                <!-- 可以在组件上使用模板引用，引用的是当前组件实例 -->
+                <!-- 在<component :is="">外包裹<keep-alive>，可保证组件间切换时保持这些组件各自内部的状态，以避免重新渲染 -->
+                <keep-alive>
+                    <component :is="currentComponent" :title="unifiedTitle" ref="compRef">hahahaha, I have slot content</component>
+                </keep-alive>
+            </div>
+        </div>
+    `,
+
+
+};
+
+app.component('tab-component1', TabComponent1).component('tab-component2', TabComponent2).component('dynamic-component', DynamicComponent);
+
+
+
+const vm = app.mount('#app');
+
+// Vue通过$向外暴露实例的一些有用的内置API
+vm.$props;  // 在外部访问props
+vm.$attrs;  // 在外部访问透传来的HTMLAttributes
+vm.$emit();  // 在外部向父组件发出自定义事件
+
+// 总结：Vue的4种传值方式
+
+// 1（通用）props + emits
+// 子：props:[], emits:[]
+
+// 2（通用）provide / inject
+// 父：provide()
+// 子：inject: []
+
+// 3（全部组件挂载完毕后）ref / expose
+// 父：$ref
+// 子：expose: []
+
+// 4（有限地子传父）slot props
+
+
+
+</script>
+
+</html>
